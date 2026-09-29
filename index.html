@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poradnik Tradera – MSMR Alchemist</title>
+<meta name="description" content="Praktyczny poradnik dla początkujących: jak zacząć tradować, liczyć ryzyko i handlować według planu. 11 rozdziałów, checklista, dziennik tradera.">
+<style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#14202e;--muted:#5b6878;--line:#e2e6ec;--accent:#0f7b6c;--accent-ink:#fff;--warn:#fdf3e1;--warn-ink:#6b4a0b}
+@media (prefers-color-scheme:dark){:root{--bg:#0f151c;--card:#171f29;--ink:#e8edf3;--muted:#9aa7b6;--line:#26313e;--accent:#2bb59f;--accent-ink:#06211c;--warn:#2b2312;--warn-ink:#f0d9a4}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px}
+section{padding:56px 0}
+h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.15;margin:0 0 16px}
+h2{font-size:clamp(1.5rem,3vw,2rem);margin:0 0 12px}
+h3{margin:0 0 6px;font-size:1.05rem}
+p{margin:0 0 14px}
+.muted{color:var(--muted)}
+.hero{padding:72px 0 48px}
+.eyebrow{color:var(--accent);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.8rem}
+.btn{display:inline-block;background:var(--accent);color:var(--accent-ink);padding:14px 26px;border-radius:10px;font-weight:700;text-decoration:none;border:0;font-size:1rem;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.stat{font-size:2.2rem;font-weight:800;color:var(--accent);line-height:1.1}
+.warn{background:var(--warn);color:var(--warn-ink);border-radius:12px;padding:16px 18px}
+ol.chapters{list-style:none;counter-reset:c;padding:0;margin:0;display:grid;gap:10px}
+ol.chapters li{counter-increment:c;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px 14px 56px;position:relative}
+ol.chapters li::before{content:counter(c);position:absolute;left:14px;top:12px;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:.9rem}
+ol.chapters b{display:block}
+ul.tick{list-style:none;padding:0;margin:0}
+ul.tick li{padding-left:28px;position:relative;margin-bottom:8px}
+ul.tick li::before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:800}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:.85rem;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+pre{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:.95rem}
+.price-box{text-align:center;max-width:460px;margin:0 auto;border:2px solid var(--accent)}
+.price{font-size:3rem;font-weight:800;margin:8px 0}
+.price s{font-size:1.3rem;color:var(--muted);font-weight:400;margin-right:8px}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:600}
+details p{margin:10px 0 0}
+label.consent{display:flex;gap:10px;text-align:left;font-size:.85rem;color:var(--muted);margin:16px 0;align-items:flex-start}
+footer{padding:32px 0 48px;border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
+#msg{margin-top:12px;font-size:.9rem;color:var(--warn-ink);background:var(--warn);border-radius:8px;padding:10px;display:none}
+</style>
+</head>
+<body>
+
+<header class="hero">
+<div class="wrap">
+  <p class="eyebrow">Poradnik dla początkujących · PDF / e-book</p>
+  <h1>Jak zacząć tradować i nie stracić konta na starcie</h1>
+  <p class="muted" style="font-size:1.15rem;max-width:660px">Jasny plan zamiast improwizacji: nauka na koncie demo, zarządzanie ryzykiem, psychologia i konkretna metoda wejść – strategia MSMR Alchemist, krok po kroku.</p>
+  <p><a class="btn" href="#kup" data-buy>Kup poradnik – <span data-price></span></a>
+  <a href="#zawartosc" style="margin-left:16px">Zobacz, co w środku</a></p>
+</div>
+</header>
+
+<section style="padding-top:0">
+<div class="wrap">
+  <div class="warn"><b>Uczciwie o ryzyku.</b> Według danych KNF za 2025 rok stratą zakończyło rok 72,2% aktywnych klientów polskich domów maklerskich handlujących Forex i CFD. Ten poradnik nie obiecuje zysków – uczy, jak ograniczać straty, budować nawyki i podejmować decyzje według planu.</div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+  <h2>Dlaczego większość początkujących traci</h2>
+  <div class="grid">
+    <div class="card"><div class="stat">72,2%</div><p class="muted">klientów polskich domów maklerskich zakończyło 2025 rok ze stratą (dane KNF za Bankier.pl)</p></div>
+    <div class="card"><div class="stat">10 046 zł</div><p class="muted">średnia strata osób, które straciły</p></div>
+    <div class="card"><div class="stat">2,68 mld zł</div><p class="muted">łączne straty klientów – prawie 4× więcej niż zyski (740 mln zł)</p></div>
+  </div>
+  <p style="margin-top:20px">Zwykle nie zawodzi sama metoda, tylko zbyt duże pozycje, emocje i brak planu. Dlatego ponad połowa poradnika to fundament: ryzyko, demo i dyscyplina.</p>
+</div>
+</section>
+
+<section id="zawartosc" style="background:var(--card);border-block:1px solid var(--line)">
+<div class="wrap">
+  <h2>Co jest w środku – 11 rozdziałów</h2>
+  <p class="muted">Rozdziały 1–4 to fundament. Bez nich nawet dobra strategia prowadzi do strat.</p>
+  <ol class="chapters">
+    <li><b>Zanim zaczniesz – nauka na koncie demo</b><span class="muted">Jak ćwiczyć, żeby demo miało sens i kiedy przejść na prawdziwe pieniądze.</span></li>
+    <li><b>Podstawy rynku</b><span class="muted">CFD, dźwignia, pips, lot, spread, sesje handlowe, wybór brokera.</span></li>
+    <li><b>Zarządzanie ryzykiem</b><span class="muted">Zasada 1%, wzór na wielkość pozycji, stosunek zysku do ryzyka, limity strat.</span></li>
+    <li><b>Psychologia tradera</b><span class="muted">FOMO, revenge trading, overtrading – i nawyki, które je ograniczają.</span></li>
+    <li><b>Fundamenty strategii MSMR Alchemist</b><span class="muted">Wykres świecowy, rola interwałów H4/D1 i M5, cierpliwość snajpera.</span></li>
+    <li><b>Wyznaczanie stref – zasada ciał świec</b><span class="muted">Jak rysować wsparcia i opory na korpusach i usuwać szum.</span></li>
+    <li><b>Selekcja poziomów</b><span class="muted">Filtry Fresh / Tested i warunek impulsu – w które poziomy grać, a które pominąć.</span></li>
+    <li><b>Egzekucja – zasadzka na M5</b><span class="muted">Czterostopniowy protokół wejścia: sweep, BOS, retest, Stop Loss i Take Profit.</span></li>
+    <li><b>Plan tradingowy i checklista</b><span class="muted">Gotowy szablon planu i lista kontrolna przed każdym wejściem.</span></li>
+    <li><b>Dziennik tradingowy</b><span class="muted">Wzór dziennika, wynik w R, cotygodniowy przegląd.</span></li>
+    <li><b>Najczęstsze błędy początkujących</b><span class="muted">Tabela błędów, ich skutków i sposobów uniknięcia.</span></li>
+  </ol>
+  <p style="margin-top:16px" class="muted">Bonus: słowniczek pojęć oraz ścieżka „krok po kroku” od demo do pełnego ryzyka.</p>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+  <h2>Darmowy fragment: jak policzyć wielkość pozycji</h2>
+  <p>Najważniejsza zasada poradnika: na jednej transakcji ryzykujesz maksymalnie 1% kapitału. Najpierw wyznaczasz Stop Loss, dopiero potem liczysz pozycję – nigdy odwrotnie.</p>
+  <pre>Konto: 10 000 zł  →  ryzyko 1% = 100 zł
+Stop Loss: 20 pipsów
+1 pips przy 1 locie EUR/USD = 10 USD ≈ 38 zł (kurs 3,80)
+
+Pozycja = 100 zł ÷ (20 × 38 zł) = 0,1316 lota → 0,13 lota
+Sprawdzenie: 0,13 × 20 × 38 zł = 98,80 zł ryzyka</pre>
+  <table>
+    <tr><th>Stosunek zysku do ryzyka</th><th>Minimalna skuteczność, żeby wyjść na zero</th></tr>
+    <tr><td>1:1</td><td>50% transakcji</td></tr>
+    <tr><td>1:2</td><td>33,3% transakcji</td></tr>
+    <tr><td>1:3</td><td>25% transakcji</td></tr>
+  </table>
+  <p class="muted" style="margin-top:8px;font-size:.9rem">Bez spreadów i prowizji. Materiał edukacyjny, nie rekomendacja inwestycyjna.</p>
+</div>
+</section>
+
+<section style="background:var(--card);border-block:1px solid var(--line)">
+<div class="wrap">
+  <div class="grid">
+    <div>
+      <h2>Dla kogo</h2>
+      <ul class="tick">
+        <li>dla osób, które jeszcze nie handlowały za prawdziwe pieniądze,</li>
+        <li>dla tych, którzy próbowali, ale grali chaotycznie,</li>
+        <li>dla każdego, kto chce decydować według planu, nie emocji.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Czego się nauczysz</h2>
+      <ul class="tick">
+        <li>ćwiczyć na demo i wiedzieć, kiedy jesteś gotowy,</li>
+        <li>liczyć pozycję tak, by pojedyncza strata nie była groźna,</li>
+        <li>wyznaczać strefy na H4/D1 i wchodzić na M5,</li>
+        <li>prowadzić plan i dziennik, by stale się poprawiać.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="kup">
+<div class="wrap">
+  <div class="card price-box">
+    <p class="eyebrow">Poradnik Tradera – MSMR Alchemist</p>
+    <div class="price"><s data-oldprice></s><span data-price></span></div>
+    <p class="muted">Jednorazowa płatność · dostęp natychmiast po zakupie (plik do pobrania)</p>
+    <label class="consent"><input type="checkbox" id="consent">
+      <span>Akceptuję regulamin i politykę prywatności oraz zgadzam się na dostarczenie treści cyfrowej przed upływem 14 dni i przyjmuję do wiadomości, że tracę w ten sposób prawo do odstąpienia od umowy.</span></label>
+    <button class="btn" id="buy" style="width:100%">Kupuję poradnik</button>
+    <div id="msg"></div>
+    <p class="muted" style="font-size:.85rem;margin-top:14px">Materiał wyłącznie edukacyjny. Nie gwarantuje zysków.</p>
+  </div>
+</div>
+</section>
+
+<section style="padding-top:0">
+<div class="wrap">
+  <h2>Częste pytania</h2>
+  <details><summary>Czy poradnik gwarantuje zarobek?</summary><p>Nie. Żadna strategia nie wygrywa zawsze, a przeszłe wyniki nie gwarantują przyszłych. Poradnik uczy podejścia opartego na planie i kontroli ryzyka.</p></details>
+  <details><summary>Czy potrzebuję doświadczenia?</summary><p>Nie. Poradnik zaczyna od podstaw: konta demo, pojęć rynkowych i zarządzania ryzykiem.</p></details>
+  <details><summary>Ile pieniędzy potrzebuję na start?</summary><p>Przez pierwsze tygodnie handlujesz wyłącznie na koncie demo. Na prawdziwym koncie zaczynasz od małej kwoty, której utratę spokojnie przeżyjesz.</p></details>
+  <details><summary>W jakiej formie dostanę poradnik?</summary><p>Jako plik do pobrania po opłaceniu zamówienia (link przesłany na podany e-mail).</p></details>
+  <details><summary>Czy to doradztwo inwestycyjne?</summary><p>Nie. To materiał wyłącznie edukacyjny. Wszystkie decyzje podejmujesz samodzielnie i na własną odpowiedzialność.</p></details>
+</div>
+</section>
+
+<footer>
+<div class="wrap">
+  <p><b>Ostrzeżenie o ryzyku:</b> handel z dźwignią (Forex, CFD) niesie wysokie ryzyko utraty wpłaconego kapitału. Handluj tylko pieniędzmi, których utratę spokojnie przeżyjesz. Materiał nie stanowi rekomendacji inwestycyjnej ani doradztwa inwestycyjnego.</p>
+  <p>Źródła: Bankier.pl (dane KNF o wynikach klientów rynku Forex za 2025 r.), ESMA (ograniczenia CFD dla klientów detalicznych).</p>
+  <p data-seller></p>
+  <p><a href="mailto:" data-mail>Kontakt</a> · <a href="regulamin.html">Regulamin</a> · <a href="prywatnosc.html">Polityka prywatności</a></p>
+</div>
+</footer>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  var c = window.SHOP || {};
+  document.querySelectorAll("[data-price]").forEach(function(e){e.textContent=c.price||""});
+  document.querySelectorAll("[data-oldprice]").forEach(function(e){e.textContent=c.oldPrice||""});
+  document.querySelectorAll("[data-seller]").forEach(function(e){e.textContent="Sprzedawca: "+(c.sellerName||"")});
+  document.querySelectorAll("[data-mail]").forEach(function(e){e.href="mailto:"+(c.contactEmail||"")});
+  var msg=document.getElementById("msg");
+  function show(t){msg.textContent=t;msg.style.display="block"}
+  document.getElementById("buy").addEventListener("click",function(){
+    if(!document.getElementById("consent").checked){show("Zaznacz zgodę, aby przejść do płatności.");return}
+    if(!c.checkoutUrl){show("Sprzedaż wystartuje wkrótce. Napisz: "+(c.contactEmail||""));return}
+    window.location.href=c.checkoutUrl;
+  });
+})();
+</script>
+</body>
+</html>
