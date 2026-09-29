@@ -7,6 +7,9 @@
   fill("[data-seller]",function(e){e.textContent="Sprzedawca: "+(c.sellerName||"")});
   fill("[data-mail]",function(e){e.href="mailto:"+(c.contactEmail||"")});
 
+  fill("[data-discount]",function(e){
+    var n=parseInt(String(c.price).replace(/\D/g,"")),o=parseInt(String(c.oldPrice||"").replace(/\D/g,""));
+    e.textContent=(o>n&&n>0)?"−"+Math.round((1-n/o)*100)+"%":""});
   var msg=document.getElementById("msg");
   function show(t){msg.textContent=t;msg.style.display="block"}
   document.getElementById("buy").addEventListener("click",function(){

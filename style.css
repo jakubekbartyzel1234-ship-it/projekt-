@@ -23,14 +23,10 @@ p{margin:0 0 14px}
 .trust{display:flex;gap:8px 22px;flex-wrap:wrap;margin-top:26px;color:var(--muted);font-size:.9rem}
 .trust b{color:var(--ink)}
 .visual{position:relative;min-height:450px}
-.chartcard{position:absolute;right:0;top:0;width:100%;background:linear-gradient(160deg,#0f2450,#081733);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 30px 70px rgba(0,0,0,.55)}
+.chartcard{position:absolute;right:0;top:0;width:86%;background:linear-gradient(160deg,#0f2450,#081733);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 30px 70px rgba(0,0,0,.55)}
 .chartcard .bar{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-bottom:6px}
 .chartcard .bar b{color:var(--green)}
 #hero-chart{width:100%;height:auto;display:block}
-.cover{position:absolute;left:-22px;bottom:-56px;width:165px;aspect-ratio:3/4;border-radius:8px 14px 14px 8px;background:linear-gradient(150deg,#12306b,#071535);border:1px solid #2b4a8c;box-shadow:-6px 0 0 #040a1a,0 26px 50px rgba(0,0,0,.6);padding:16px 14px;transform:rotate(-6deg);display:flex;flex-direction:column;justify-content:space-between}
-.cover .t{font-weight:800;font-size:1.05rem;line-height:1.15}
-.cover .s{font-size:.62rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase}
-.cover svg{width:100%;height:auto}
 .float{animation:fl 6s ease-in-out infinite}
 @keyframes fl{50%{transform:translateY(-8px)}}
 
@@ -95,10 +91,49 @@ footer a{color:var(--muted)}
 
 @media(max-width:820px){
  .visual{margin-bottom:60px}
- .cover{left:-6px;bottom:-50px;width:140px}
-  .hero-grid,.split{grid-template-columns:1fr}
+   .hero-grid,.split{grid-template-columns:1fr}
  .visual{min-height:380px;margin-top:10px}
  .path{grid-template-columns:1fr 1fr;gap:22px 0}.path::before{display:none}
  section{padding:54px 0}
  .link{display:block;margin:14px 0 0}
 }
+
+/* 3D książka */
+.glow{position:absolute;inset:10% 0 0 10%;background:radial-gradient(closest-side,rgba(77,163,255,.45),transparent 70%);filter:blur(30px)}
+.book{position:absolute;left:4px;bottom:-40px;width:210px;aspect-ratio:3/4.1;perspective:900px;transform-style:preserve-3d;transform:rotateY(-24deg) rotateX(4deg) rotate(-3deg)}
+.book .face{position:absolute;inset:0;border-radius:4px 12px 12px 4px;background:linear-gradient(150deg,#1a4ba8 0%,#0d2a66 45%,#06132f 100%);border:1px solid #3a67c4;box-shadow:0 30px 60px rgba(0,0,0,.65),inset 0 0 40px rgba(77,163,255,.25);padding:20px 18px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+.book .face::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.22) 0%,transparent 35%);pointer-events:none}
+.book .spine{position:absolute;left:-12px;top:2px;bottom:2px;width:14px;border-radius:4px 0 0 4px;background:linear-gradient(90deg,#040d24,#0b2358);transform:skewY(-4deg)}
+.book .t{font-weight:800;font-size:1.5rem;line-height:1.05;letter-spacing:-.01em}
+.book .s{font-size:.6rem;letter-spacing:.16em;color:#9fd0ff;text-transform:uppercase}
+.book svg{width:100%;height:auto}
+.chip{position:absolute;background:rgba(9,24,58,.9);border:1px solid #2b4a8c;color:#cfe6ff;font-size:.78rem;font-weight:700;padding:6px 12px;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:fl 5s ease-in-out infinite}
+.chip.c1{left:44%;bottom:64px;color:#2fd39a}.chip.c2{right:2%;top:58%;animation-delay:-1.5s}.chip.c3{right:10%;bottom:6px;animation-delay:-3s}
+
+/* pasek */
+.ticker{overflow:hidden;border-block:1px solid var(--line);background:rgba(12,29,66,.5);padding:12px 0;margin-top:30px;white-space:nowrap}
+.ticker .track{display:inline-flex;gap:0;animation:mq 38s linear infinite}
+.ticker span{color:var(--muted);font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:0 22px;position:relative}
+.ticker span::after{content:"◆";position:absolute;right:-6px;color:var(--gold);font-size:.6rem}
+@keyframes mq{to{transform:translateX(-50%)}}
+
+/* cena */
+.price-box{max-width:520px;padding:34px 28px 28px;background:linear-gradient(180deg,#10285c,#081735)!important;border:1px solid transparent!important;background-clip:padding-box;position:relative}
+.price-box::before{content:"";position:absolute;inset:-2px;z-index:-1;border-radius:18px;background:linear-gradient(120deg,#7ee8ff,#1f6feb,#a78bfa,#7ee8ff);background-size:300% 300%;animation:bd 6s linear infinite;filter:blur(.3px)}
+.price-box::after{content:"";position:absolute;inset:-30px;z-index:-2;background:radial-gradient(closest-side,rgba(77,163,255,.35),transparent 70%);filter:blur(24px)}
+@keyframes bd{50%{background-position:100% 50%}}
+.ribbon{position:absolute;top:-16px;right:-14px;background:linear-gradient(135deg,#ff5d6c,#ff2e63);color:#fff;font-weight:800;font-size:1.05rem;padding:10px 16px;border-radius:12px;transform:rotate(6deg);box-shadow:0 10px 26px rgba(255,46,99,.5)}
+.ribbon:empty{display:none}
+.promo{display:inline-block;background:rgba(47,211,154,.14);color:var(--green);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;padding:4px 12px;border-radius:99px;margin-bottom:6px}
+.price{font-size:clamp(4rem,14vw,5.6rem)!important;letter-spacing:-.04em;display:flex;align-items:baseline;justify-content:center;gap:14px;flex-wrap:wrap}
+.price [data-price]{background:linear-gradient(180deg,#fff,#8cc4ff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 22px rgba(77,163,255,.55))}
+.price s{font-size:1.7rem!important;color:#7f93b8!important;text-decoration-color:var(--red);text-decoration-thickness:3px}
+.anchor{background:rgba(255,255,255,.05);border-radius:12px;padding:12px 14px;font-size:.92rem;color:var(--muted);margin:14px 0}
+.anchor b{color:#fff}
+#buy{position:relative;overflow:hidden;font-size:1.1rem;padding:17px}
+#buy::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);animation:sh 3.2s infinite}
+@keyframes sh{to{left:130%}}
+.btn{color:#fff!important;text-shadow:0 1px 2px rgba(0,0,0,.35);background:linear-gradient(180deg,#4da3ff,#1f5fe0)!important;box-shadow:0 10px 34px rgba(31,111,235,.5)!important}
+.sticky s{color:#7f93b8;margin-right:4px}
+@media(max-width:820px){.book{width:160px;left:0;bottom:-30px}.chartcard{width:92%}.chip.c1{left:46%}}
+@media (prefers-reduced-motion:reduce){.ticker .track,.price-box::before,#buy::after,.chip{animation:none}}
