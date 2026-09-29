@@ -3,13 +3,14 @@
   function fill(sel,fn){document.querySelectorAll(sel).forEach(fn)}
   fill("[data-price]",function(e){e.textContent=c.price||""});
   fill("[data-oldprice]",function(e){e.textContent=c.oldPrice||""});
+  fill("[data-omni]",function(e){e.textContent=c.oldPrice?"Najniższa cena z 30 dni przed obniżką: "+(c.lowestPrice30d||c.oldPrice)+" (cena brutto, zawiera VAT)":"Cena brutto, zawiera VAT"});
   fill("[data-seller]",function(e){e.textContent="Sprzedawca: "+(c.sellerName||"")});
   fill("[data-mail]",function(e){e.href="mailto:"+(c.contactEmail||"")});
 
   var msg=document.getElementById("msg");
   function show(t){msg.textContent=t;msg.style.display="block"}
   document.getElementById("buy").addEventListener("click",function(){
-    if(!document.getElementById("consent").checked){show("Zaznacz zgodę, aby przejść do płatności.");return}
+    if(!document.getElementById("consent").checked||!document.getElementById("consent2").checked){show("Zaznacz obie zgody, aby przejść do płatności.");return}
     if(!c.checkoutUrl){show("Sprzedaż wystartuje wkrótce. Napisz: "+(c.contactEmail||""));return}
     window.location.href=c.checkoutUrl;
   });
@@ -19,8 +20,8 @@
   function el(n,a){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e}
   var d=[[150,138,152,132],[138,146,150,134],[146,128,148,124],[128,120,132,116],[120,126,130,116],[126,110,128,106],[110,116,120,104],[116,132,136,112],[132,140,146,128],[140,124,142,120],[124,104,126,100],[104,92,108,88],[92,84,96,78],[84,88,94,80],[88,70,90,66],[70,60,74,54],[60,44,62,40],[44,50,56,38],[50,32,52,28]]; // open, close, high, low (y)
   for(var g=1;g<5;g++)el("line",{x1:0,x2:400,y1:g*48,y2:g*48,stroke:"#1f2c3d","stroke-width":1});
-  el("line",{x1:0,x2:400,y1:150,y2:150,stroke:"#f4c04a","stroke-width":1.5,"stroke-dasharray":"5 4"});
-  var t=el("text",{x:8,y:166,fill:"#f4c04a","font-size":10,"font-family":"system-ui"});t.textContent="strefa Fresh";
+  el("line",{x1:0,x2:400,y1:150,y2:150,stroke:"#4da3ff","stroke-width":1.5,"stroke-dasharray":"5 4"});
+  var t=el("text",{x:8,y:166,fill:"#4da3ff","font-size":10,"font-family":"system-ui"});t.textContent="strefa Fresh";
   d.forEach(function(k,i){
     var x=16+i*20, up=k[1]<k[0], col=up?"#2fd39a":"#ff5d6c";
     el("line",{x1:x,x2:x,y1:k[2],y2:k[3],stroke:col,"stroke-width":1.5});
