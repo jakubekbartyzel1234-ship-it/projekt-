@@ -6,6 +6,6 @@ window.SHOP = {
   // Link do płatności: Stripe Payment Link, Przelewy24, Payhip, Gumroad, Buy Coffee itp.
   // Puste = przycisk pokaże komunikat "sprzedaż wkrótce".
   checkoutUrl: "",
-  contactEmail: "kontakt@twojadomena.pl",
+  contactEmail: "kontakt@traderodzera.pl",
   sellerName: "Imię i nazwisko / nazwa firmy, adres, NIP"
 };
