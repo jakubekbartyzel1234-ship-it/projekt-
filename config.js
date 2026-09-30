@@ -7,5 +7,5 @@ window.SHOP = {
   // Puste = przycisk pokaże komunikat "sprzedaż wkrótce".
   checkoutUrl: "",
   contactEmail: "kontakt@traderodzera.pl",
-  sellerName: "Imię i nazwisko / nazwa firmy, adres, NIP"
+  sellerName: "Imię i nazwisko, działalność nierejestrowana, adres do korespondencji"
 };
