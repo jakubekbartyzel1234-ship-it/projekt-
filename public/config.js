@@ -5,7 +5,7 @@ window.SHOP = {
   lowestPrice30d: "799 zł",     // NAJNIŻSZA cena z 30 dni przed obniżką (wymóg prawa, patrz README)
   // Link do płatności: Stripe Payment Link, Przelewy24, Payhip, Gumroad, Buy Coffee itp.
   // Puste = przycisk pokaże komunikat "sprzedaż wkrótce".
-  checkoutUrl: "",
+  checkoutUrl: "https://traderodzera.gumroad.com/l/moxddy",
   contactEmail: "kontakt@traderodzera.pl",
   sellerName: "Imię i nazwisko, działalność nierejestrowana, adres do korespondencji"
 };
