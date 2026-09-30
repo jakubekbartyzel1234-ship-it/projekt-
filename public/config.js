@@ -7,5 +7,5 @@ window.SHOP = {
   // Puste = przycisk pokaże komunikat "sprzedaż wkrótce".
   checkoutUrl: "https://traderodzera.gumroad.com/l/moxddy",
   contactEmail: "kontakt@traderodzera.pl",
-  sellerName: "Imię i nazwisko, działalność nierejestrowana, adres do korespondencji"
+  sellerName: "Jakub Bartyzel, ul. Nowodąbrowska 206, Tarnów (działalność nierejestrowana)"
 };
