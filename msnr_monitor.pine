@@ -1,0 +1,146 @@
+//@version=5
+// MSNR Monitor – pilnuje poziomów, zamknięć świec HTF (SBR/RBS) i BOS w strefie.
+//
+// JAK UŻYĆ:
+// 1. TradingView -> Edytor Pine (na dole) -> wklej cały kod -> "Dodaj do wykresu".
+// 2. Włącz wykres XAUUSD na M5 (albo M1/M15). Interwał wykresu musi być <= interwał potwierdzenia (domyślnie H1).
+// 3. W ustawieniach wskaźnika wpisz swoje AKTUALNE poziomy (opór, wsparcie, itd.).
+// 4. Alert (ikona zegara) -> Warunek: "MSNR Monitor" -> "Dowolne wywołanie funkcji alert()" -> Powiadomienia (aplikacja / e-mail).
+//
+// CO ROBI:
+// - Rysuje poziom i strefę (± szerokość). Strefa jest czerwona (SBR), zielona (RBS) albo szara (brak potwierdzenia).
+// - Gdy świeca HTF (domyślnie H1) ZAMKNIE SIĘ po drugiej stronie poziomu niż poprzednio -> alert o breakoucie.
+// - Pod poziomem (SBR): cena weszła w strefę od dołu + BOS w dół (zamknięcie poniżej ostatniego dołka) -> sygnał SELL.
+// - Nad poziomem (RBS): cena weszła w strefę od góry + BOS w górę (zamknięcie powyżej ostatniego szczytu) -> sygnał BUY.
+// To narzędzie edukacyjne, nie porada inwestycyjna. Nie składa zleceń.
+
+indicator("MSNR Monitor", overlay = true, max_labels_count = 200)
+
+// ===== Ustawienia =====
+gL  = "Poziomy (wpisz własne albo wskaż na wykresie)"
+on1 = input.bool(true,  "Poziom 1 aktywny", group = gL)
+L1  = input.price(4166.76, "Poziom 1", group = gL)
+on2 = input.bool(true,  "Poziom 2 aktywny", group = gL)
+L2  = input.price(4116.90, "Poziom 2", group = gL)
+on3 = input.bool(false, "Poziom 3 aktywny", group = gL)
+L3  = input.price(4217.70, "Poziom 3", group = gL)
+
+gS      = "Zasady"
+htfTf   = input.timeframe("60", "Interwał potwierdzenia poziomu (zamknięcie świecy)", group = gS)
+zoneW   = input.float(4.0, "Połowa szerokości strefy (pkt)", minval = 0.1, group = gS)
+lb      = input.int(36, "Ile świec wstecz szukać wejścia w strefę", minval = 3, group = gS)
+pivLen  = input.int(2, "Długość pivota (świece z każdej strony)", minval = 1, group = gS)
+maxDist = input.float(25.0, "Maks. odległość dołka/szczytu BOS od poziomu (pkt)", minval = 1.0, group = gS)
+showTbl = input.bool(true, "Pokaż tabelkę statusu", group = gS)
+
+// ===== Pivoty (ostatni dołek i szczyt) =====
+pl = ta.pivotlow(low, pivLen, pivLen)
+ph = ta.pivothigh(high, pivLen, pivLen)
+var float lastPL = na
+var float lastPH = na
+if not na(pl)
+    lastPL := pl
+if not na(ph)
+    lastPH := ph
+
+// ===== Zamknięcie świecy HTF =====
+// Na pierwszej świecy nowej HTF, close[1] to zamknięcie poprzedniej świecy HTF (gdy wykres <= HTF).
+htfNew   = ta.change(time(htfTf)) != 0
+htfClose = close[1]
+tfOk     = timeframe.in_seconds() <= timeframe.in_seconds(htfTf)
+
+// ===== Logika jednego poziomu =====
+f_level(float L, bool on, float w, bool newHtf, float cHtf, int n, float pLow, float pHigh, float maxD) =>
+    var int side = 0
+    bool brkUp = false
+    bool brkDn = false
+    if on and newHtf
+        int ns = cHtf > L ? 1 : -1
+        brkUp := side == -1 and ns == 1
+        brkDn := side == 1 and ns == -1
+        side := ns
+    float hh = ta.highest(high, n)
+    float ll = ta.lowest(low, n)
+    bool nearBelow = hh >= L - w and hh <= L + w
+    bool nearAbove = ll <= L + w and ll >= L - w
+    bool okLow  = not na(pLow) and pLow < L and L - pLow <= maxD
+    bool okHigh = not na(pHigh) and pHigh > L and pHigh - L <= maxD
+    bool sellSig = on and side == -1 and nearBelow and okLow and close < pLow and close[1] >= pLow
+    bool buySig  = on and side == 1 and nearAbove and okHigh and close > pHigh and close[1] <= pHigh
+    [side, brkUp, brkDn, sellSig, buySig]
+
+[s1, bu1, bd1, sell1, buy1] = f_level(L1, on1, zoneW, htfNew, htfClose, lb, lastPL, lastPH, maxDist)
+[s2, bu2, bd2, sell2, buy2] = f_level(L2, on2, zoneW, htfNew, htfClose, lb, lastPL, lastPH, maxDist)
+[s3, bu3, bd3, sell3, buy3] = f_level(L3, on3, zoneW, htfNew, htfClose, lb, lastPL, lastPH, maxDist)
+
+// ===== Rysowanie poziomów i stref =====
+f_col(int s) => s == -1 ? color.red : s == 1 ? color.green : color.gray
+
+pU1 = plot(on1 ? L1 + zoneW : na, "Strefa 1 góra", color = color.new(color.blue, 100))
+pD1 = plot(on1 ? L1 - zoneW : na, "Strefa 1 dół", color = color.new(color.blue, 100))
+fill(pU1, pD1, color = color.new(f_col(s1), 85), title = "Strefa 1")
+plot(on1 ? L1 : na, "Poziom 1", color = color.blue, linewidth = 2)
+
+pU2 = plot(on2 ? L2 + zoneW : na, "Strefa 2 góra", color = color.new(color.blue, 100))
+pD2 = plot(on2 ? L2 - zoneW : na, "Strefa 2 dół", color = color.new(color.blue, 100))
+fill(pU2, pD2, color = color.new(f_col(s2), 85), title = "Strefa 2")
+plot(on2 ? L2 : na, "Poziom 2", color = color.blue, linewidth = 2)
+
+pU3 = plot(on3 ? L3 + zoneW : na, "Strefa 3 góra", color = color.new(color.blue, 100))
+pD3 = plot(on3 ? L3 - zoneW : na, "Strefa 3 dół", color = color.new(color.blue, 100))
+fill(pU3, pD3, color = color.new(f_col(s3), 85), title = "Strefa 3")
+plot(on3 ? L3 : na, "Poziom 3", color = color.blue, linewidth = 2)
+
+anySell = sell1 or sell2 or sell3
+anyBuy  = buy1 or buy2 or buy3
+plotshape(anySell, title = "SELL", style = shape.triangledown, location = location.abovebar, color = color.red, size = size.normal, text = "SELL")
+plotshape(anyBuy, title = "BUY", style = shape.triangleup, location = location.belowbar, color = color.green, size = size.normal, text = "BUY")
+
+// ===== Alerty =====
+f_brk(float L, bool up) =>
+    syminfo.ticker + ": zamknięcie " + htfTf + " " + (up ? "NAD " : "POD ") + str.tostring(L, "#.##") + (up ? " -> RBS, czekaj na cofkę i BOS w górę" : " -> SBR, czekaj na cofkę i BOS w dół")
+
+f_sig(float L, bool sell) =>
+    syminfo.ticker + ": " + (sell ? "SIGNAL SELL" : "SIGNAL BUY") + " przy poziomie " + str.tostring(L, "#.##") + " (BOS " + (sell ? "w dół" : "w górę") + " w strefie). Sprawdź RR i SL."
+
+if bu1
+    alert(f_brk(L1, true), alert.freq_once_per_bar)
+if bd1
+    alert(f_brk(L1, false), alert.freq_once_per_bar)
+if bu2
+    alert(f_brk(L2, true), alert.freq_once_per_bar)
+if bd2
+    alert(f_brk(L2, false), alert.freq_once_per_bar)
+if bu3
+    alert(f_brk(L3, true), alert.freq_once_per_bar)
+if bd3
+    alert(f_brk(L3, false), alert.freq_once_per_bar)
+
+if sell1
+    alert(f_sig(L1, true), alert.freq_once_per_bar_close)
+if buy1
+    alert(f_sig(L1, false), alert.freq_once_per_bar_close)
+if sell2
+    alert(f_sig(L2, true), alert.freq_once_per_bar_close)
+if buy2
+    alert(f_sig(L2, false), alert.freq_once_per_bar_close)
+if sell3
+    alert(f_sig(L3, true), alert.freq_once_per_bar_close)
+if buy3
+    alert(f_sig(L3, false), alert.freq_once_per_bar_close)
+
+// ===== Tabelka statusu =====
+f_st(int s) => s == 1 ? "nad -> RBS (szukaj BUY)" : s == -1 ? "pod -> SBR (szukaj SELL)" : "czekam na zamknięcie " + htfTf
+
+var table t = table.new(position.top_right, 2, 5, bgcolor = color.new(color.black, 20), border_width = 1)
+if showTbl and barstate.islast
+    table.cell(t, 0, 0, "Poziom", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 0, "Status", text_color = color.white, text_size = size.small)
+    table.cell(t, 0, 1, on1 ? str.tostring(L1, "#.##") : "-", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 1, on1 ? f_st(s1) : "wyłączony", text_color = f_col(s1), text_size = size.small)
+    table.cell(t, 0, 2, on2 ? str.tostring(L2, "#.##") : "-", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 2, on2 ? f_st(s2) : "wyłączony", text_color = f_col(s2), text_size = size.small)
+    table.cell(t, 0, 3, on3 ? str.tostring(L3, "#.##") : "-", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 3, on3 ? f_st(s3) : "wyłączony", text_color = f_col(s3), text_size = size.small)
+    table.cell(t, 0, 4, tfOk ? "" : "UWAGA", text_color = color.orange, text_size = size.small)
+    table.cell(t, 1, 4, tfOk ? "" : "wykres większy niż interwał potwierdzenia", text_color = color.orange, text_size = size.small)
