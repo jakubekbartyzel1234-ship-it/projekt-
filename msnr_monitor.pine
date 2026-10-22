@@ -1,31 +1,39 @@
 //@version=5
 // MSNR (Malaysian SnR) Monitor
-// - Poziomy A (szczyty) i V (dołki) liczone z ZAMKNIĘĆ świec (wykres liniowy) na wybranym interwale HTF (domyślnie H4).
-// - Poziom jest ŚWIEŻY, dopóki nie dotknie go knot. Po dotknięciu jest NIEŚWIEŻY.
-// - Zamknięcie korpusu poza poziomem = poziom przebity. Opcjonalnie zmienia rolę (RBS/SBR) i jest znów świeży.
-// - Sygnał: knot wchodzi w ŚWIEŻY poziom i świeca zamyka się z powrotem po właściwej stronie
-//   (A: SELL, V: BUY). Opcjonalnie tylko zgodnie z kierunkiem HTF (cena vs EMA).
-// Nie ma tu jeszcze poziomów typu "gap". To narzędzie edukacyjne, nie porada inwestycyjna. Nie składa zleceń.
+// - Poziomy A (szczyty) i V (dolki) liczone z ZAMKNIEC swiec (wykres liniowy) na wybranym interwale HTF (domyslnie H4).
+// - Poziom jest SWIEZY, dopoki nie dotknie go knot. Po dotknieciu jest NIESWIEZY.
+// - Zamkniecie korpusu poza poziomem = poziom przebity. Opcjonalnie zmienia role (RBS/SBR) i jest znow swiezy.
+// - Sygnal: knot wchodzi w SWIEZY poziom i swieca zamyka sie z powrotem po wlasciwej stronie (A: SELL, V: BUY).
+//   Opcjonalnie tylko zgodnie z kierunkiem HTF (cena vs EMA).
+// - Powiadomienia (jedno wywolanie alert na swiece): sygnal, zblizanie do swiezego poziomu, przebicie, nowy swiezy poziom.
+// Nie ma tu jeszcze poziomow typu "gap". To narzedzie edukacyjne, nie porada inwestycyjna. Nie sklada zlecen.
 
 indicator("MSNR Malaysian SnR", overlay = true, max_lines_count = 200, max_labels_count = 200)
 
 // ===== Ustawienia =====
-gL      = "Poziomy (z zamknięć = wykres liniowy)"
-lvTf    = input.timeframe("240", "Interwał poziomów A/V", group = gL)
-pvN     = input.int(2, "Długość pivota na zamknięciach (świece z każdej strony)", minval = 1, group = gL)
-maxLv   = input.int(12, "Maks. liczba poziomów po każdej stronie", minval = 2, group = gL)
-flipOn  = input.bool(true, "Przebity poziom zmienia rolę (RBS/SBR) i jest znów świeży", group = gL)
-tol     = input.float(0.3, "Tolerancja dotknięcia (pkt)", minval = 0.0, group = gL)
+gL      = "Poziomy (z zamkniec = wykres liniowy)"
+lvTf    = input.timeframe("240", "Interwal poziomow A/V", group = gL)
+pvN     = input.int(2, "Dlugosc pivota na zamknieciach (swiece z kazdej strony)", minval = 1, group = gL)
+maxLv   = input.int(12, "Maks. liczba poziomow po kazdej stronie", minval = 2, group = gL)
+flipOn  = input.bool(true, "Przebity poziom zmienia role (RBS/SBR) i jest znow swiezy", group = gL)
+tol     = input.float(0.3, "Tolerancja dotkniecia (pkt)", minval = 0.0, group = gL)
 
 gB      = "Kierunek (storyline)"
 useBias = input.bool(true, "Handluj tylko zgodnie z kierunkiem HTF (cena vs EMA)", group = gB)
-biasTf  = input.timeframe("240", "Interwał kierunku", group = gB)
-emaLen  = input.int(50, "Długość EMA kierunku", minval = 2, group = gB)
+biasTf  = input.timeframe("240", "Interwal kierunku", group = gB)
+emaLen  = input.int(50, "Dlugosc EMA kierunku", minval = 2, group = gB)
 
-gT      = "Wygląd"
-showTbl = input.bool(true, "Pokaż tabelkę", group = gT)
+gN      = "Powiadomienia (co ma wysylac alert)"
+alSig   = input.bool(true, "Sygnal SELL/BUY", group = gN)
+alProx  = input.bool(true, "Cena zbliza sie do swiezego poziomu", group = gN)
+prox    = input.float(5.0, "Odleglosc 'zblizania' (pkt)", minval = 0.5, group = gN)
+alBreak = input.bool(true, "Poziom przebity (zamkniecie poza poziomem)", group = gN)
+alNew   = input.bool(true, "Powstal nowy swiezy poziom", group = gN)
 
-// ===== Poziomy A/V z HTF (bez repaintingu: wartości z zakończonej świecy HTF) =====
+gT      = "Wyglad"
+showTbl = input.bool(true, "Pokaz tabelke", group = gT)
+
+// ===== Poziomy A/V z HTF (bez repaintingu: wartosci z zakonczonej swiecy HTF) =====
 f_cpiv() =>
     float a = ta.pivothigh(close, pvN, pvN)
     float v = ta.pivotlow(close, pvN, pvN)
@@ -38,29 +46,43 @@ tfOk   = timeframe.in_seconds() <= timeframe.in_seconds(lvTf)
 f_bias() => close > ta.ema(close, emaLen) ? 1 : -1
 bias = request.security(syminfo.tickerid, biasTf, f_bias())
 
-// ===== Magazyn poziomów =====
+f_ev(string cur, string add) => cur == "" ? add : cur + " | " + add
+
+// ===== Magazyn poziomow =====
 var array<float> aLv = array.new_float()
 var array<bool>  aFr = array.new_bool()
+var array<bool>  aAl = array.new_bool()
 var array<float> vLv = array.new_float()
 var array<bool>  vFr = array.new_bool()
+var array<bool>  vAl = array.new_bool()
 
-f_add(array<float> lv, array<bool> fr, float x, int mx) =>
+f_add(array<float> lv, array<bool> fr, array<bool> al, float x, int mx) =>
     array.push(lv, x)
     array.push(fr, true)
+    array.push(al, false)
     if array.size(lv) > mx
         array.shift(lv)
         array.shift(fr)
+        array.shift(al)
+
+string evMsg = ""
 
 if newHtf and not na(hA)
-    f_add(aLv, aFr, hA, maxLv)
+    f_add(aLv, aFr, aAl, hA, maxLv)
+    if alNew
+        evMsg := f_ev(evMsg, "nowy swiezy opor A " + str.tostring(hA, "#.##"))
 if newHtf and not na(hV)
-    f_add(vLv, vFr, hV, maxLv)
+    f_add(vLv, vFr, vAl, hV, maxLv)
+    if alNew
+        evMsg := f_ev(evMsg, "nowe swieze wsparcie V " + str.tostring(hV, "#.##"))
 
-// ===== Przetwarzanie świecy: dotknięcia, przebicia, sygnały =====
+// ===== Przetwarzanie swiecy: dotkniecia, przebicia, sygnaly =====
 bool sellSig = false
 bool buySig  = false
-array<float> toV = array.new_float()   // przebite opory -> nowe wsparcia (RBS)
-array<float> toA = array.new_float()   // przebite wsparcia -> nowe opory (SBR)
+float sellL  = na
+float buyL   = na
+array<float> toV = array.new_float()
+array<float> toA = array.new_float()
 
 if array.size(aLv) > 0
     for i = array.size(aLv) - 1 to 0
@@ -68,11 +90,23 @@ if array.size(aLv) > 0
         if close > L
             array.remove(aLv, i)
             array.remove(aFr, i)
+            array.remove(aAl, i)
             array.push(toV, L)
+            if alBreak
+                evMsg := f_ev(evMsg, "przebity opor A " + str.tostring(L, "#.##") + (flipOn ? " -> teraz RBS (wsparcie), czekaj na retest" : ""))
         else if high >= L - tol
             if array.get(aFr, i) and close < L
                 sellSig := true
+                sellL := L
             array.set(aFr, i, false)
+        else if array.get(aFr, i)
+            float d = L - close
+            if d > prox * 2
+                array.set(aAl, i, false)
+            else if d <= prox and not array.get(aAl, i)
+                array.set(aAl, i, true)
+                if alProx
+                    evMsg := f_ev(evMsg, "cena blisko swiezego oporu A " + str.tostring(L, "#.##") + " (SELL po reakcji)")
 
 if array.size(vLv) > 0
     for i = array.size(vLv) - 1 to 0
@@ -80,19 +114,31 @@ if array.size(vLv) > 0
         if close < L
             array.remove(vLv, i)
             array.remove(vFr, i)
+            array.remove(vAl, i)
             array.push(toA, L)
+            if alBreak
+                evMsg := f_ev(evMsg, "przebite wsparcie V " + str.tostring(L, "#.##") + (flipOn ? " -> teraz SBR (opor), czekaj na retest" : ""))
         else if low <= L + tol
             if array.get(vFr, i) and close > L
                 buySig := true
+                buyL := L
             array.set(vFr, i, false)
+        else if array.get(vFr, i)
+            float d = close - L
+            if d > prox * 2
+                array.set(vAl, i, false)
+            else if d <= prox and not array.get(vAl, i)
+                array.set(vAl, i, true)
+                if alProx
+                    evMsg := f_ev(evMsg, "cena blisko swiezego wsparcia V " + str.tostring(L, "#.##") + " (BUY po reakcji)")
 
 if flipOn
     if array.size(toV) > 0
         for i = 0 to array.size(toV) - 1
-            f_add(vLv, vFr, array.get(toV, i), maxLv)
+            f_add(vLv, vFr, vAl, array.get(toV, i), maxLv)
     if array.size(toA) > 0
         for i = 0 to array.size(toA) - 1
-            f_add(aLv, aFr, array.get(toA, i), maxLv)
+            f_add(aLv, aFr, aAl, array.get(toA, i), maxLv)
 
 okSell  = not useBias or bias == -1
 okBuy   = not useBias or bias == 1
@@ -102,12 +148,15 @@ buyOut  = buySig and okBuy
 plotshape(sellOut, title = "SELL", style = shape.triangledown, location = location.abovebar, color = color.red, size = size.normal, text = "SELL")
 plotshape(buyOut, title = "BUY", style = shape.triangleup, location = location.belowbar, color = color.green, size = size.normal, text = "BUY")
 
-if sellOut
-    alert(syminfo.ticker + ": SELL – knot w świeży poziom A i zamknięcie pod nim. Sprawdź RR i SL.", alert.freq_once_per_bar_close)
-if buyOut
-    alert(syminfo.ticker + ": BUY – knot w świeży poziom V i zamknięcie nad nim. Sprawdź RR i SL.", alert.freq_once_per_bar_close)
+if alSig and sellOut
+    evMsg := f_ev(evMsg, "SIGNAL SELL: knot w swiezy A " + str.tostring(sellL, "#.##") + " i zamkniecie pod nim")
+if alSig and buyOut
+    evMsg := f_ev(evMsg, "SIGNAL BUY: knot w swiezy V " + str.tostring(buyL, "#.##") + " i zamkniecie nad nim")
 
-// ===== Rysowanie poziomów (tylko na ostatniej świecy) =====
+if evMsg != ""
+    alert(syminfo.ticker + " " + str.tostring(close, "#.##") + ": " + evMsg, alert.freq_once_per_bar_close)
+
+// ===== Rysowanie poziomow (tylko na ostatniej swiecy) =====
 var array<line>  lns = array.new_line()
 var array<label> lbs = array.new_label()
 float nearA = na
@@ -128,7 +177,7 @@ if barstate.islast
             float L = array.get(aLv, i)
             bool fr = array.get(aFr, i)
             array.push(lns, line.new(bar_index, L, bar_index + 1, L, extend = extend.both, color = color.new(color.red, fr ? 0 : 55), style = fr ? line.style_solid : line.style_dotted, width = fr ? 2 : 1))
-            array.push(lbs, label.new(bar_index + 2, L, "A " + str.tostring(L, "#.##") + (fr ? " świeży" : " nieświeży"), style = label.style_none, textcolor = color.new(color.red, fr ? 0 : 40), size = size.small))
+            array.push(lbs, label.new(bar_index + 2, L, "A " + str.tostring(L, "#.##") + (fr ? " swiezy" : " nieswiezy"), style = label.style_none, textcolor = color.new(color.red, fr ? 0 : 40), size = size.small))
             if fr
                 freshCnt += 1
                 if L > close and (na(nearA) or L < nearA)
@@ -138,7 +187,7 @@ if barstate.islast
             float L = array.get(vLv, i)
             bool fr = array.get(vFr, i)
             array.push(lns, line.new(bar_index, L, bar_index + 1, L, extend = extend.both, color = color.new(color.green, fr ? 0 : 55), style = fr ? line.style_solid : line.style_dotted, width = fr ? 2 : 1))
-            array.push(lbs, label.new(bar_index + 2, L, "V " + str.tostring(L, "#.##") + (fr ? " świeży" : " nieświeży"), style = label.style_none, textcolor = color.new(color.green, fr ? 0 : 40), size = size.small))
+            array.push(lbs, label.new(bar_index + 2, L, "V " + str.tostring(L, "#.##") + (fr ? " swiezy" : " nieswiezy"), style = label.style_none, textcolor = color.new(color.green, fr ? 0 : 40), size = size.small))
             if fr
                 freshCnt += 1
                 if L < close and (na(nearV) or L > nearV)
@@ -150,10 +199,10 @@ if showTbl and barstate.islast
     table.cell(t, 0, 0, "MSNR", text_color = color.white, text_size = size.small)
     table.cell(t, 1, 0, "Status", text_color = color.white, text_size = size.small)
     table.cell(t, 0, 1, "Kierunek HTF", text_color = color.white, text_size = size.small)
-    table.cell(t, 1, 1, bias == 1 ? "w górę (BUY)" : "w dół (SELL)", text_color = bias == 1 ? color.green : color.red, text_size = size.small)
-    table.cell(t, 0, 2, "Świeży A nad ceną", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 1, bias == 1 ? "w gore (BUY)" : "w dol (SELL)", text_color = bias == 1 ? color.green : color.red, text_size = size.small)
+    table.cell(t, 0, 2, "Swiezy A nad cena", text_color = color.white, text_size = size.small)
     table.cell(t, 1, 2, na(nearA) ? "brak" : str.tostring(nearA, "#.##"), text_color = color.red, text_size = size.small)
-    table.cell(t, 0, 3, "Świeży V pod ceną", text_color = color.white, text_size = size.small)
+    table.cell(t, 0, 3, "Swiezy V pod cena", text_color = color.white, text_size = size.small)
     table.cell(t, 1, 3, na(nearV) ? "brak" : str.tostring(nearV, "#.##"), text_color = color.green, text_size = size.small)
-    table.cell(t, 0, 4, tfOk ? "Świeżych poziomów" : "UWAGA", text_color = tfOk ? color.white : color.orange, text_size = size.small)
-    table.cell(t, 1, 4, tfOk ? str.tostring(freshCnt) : "wykres większy niż interwał poziomów", text_color = tfOk ? color.white : color.orange, text_size = size.small)
+    table.cell(t, 0, 4, tfOk ? "Swiezych poziomow" : "UWAGA", text_color = tfOk ? color.white : color.orange, text_size = size.small)
+    table.cell(t, 1, 4, tfOk ? str.tostring(freshCnt) : "wykres wiekszy niz interwal poziomow", text_color = tfOk ? color.white : color.orange, text_size = size.small)
