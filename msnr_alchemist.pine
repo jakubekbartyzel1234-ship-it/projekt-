@@ -1,0 +1,388 @@
+//@version=5
+// MSNR Alchemist - wskaznik wg zasad z notatek uzytkownika
+// KIERUNEK: D1/H4 (tu: cena vs EMA na wybranym interwale). Gramy tylko z trendem.
+// STREFY (na H1): 1) RBS/SBR: swing wybity impulsowa swieca (duzy korpus) bez wczesniejszego przepilowania,
+//                 2) Engulfing SNR: mala swieca w calosci objeta przez duza, na lokalnym dolku/szczycie; strefa = korpus malej swiecy.
+// SWIEZOSC: tylko PIERWSZE dotkniecie strefy. Po dotknieciu strefa jest zuzyta. Przepilowana / konsolidacja = kosz.
+// ODJAZD: Engulfing liczy sie, jesli cena przez N swiec HTF nie wrocila do strefy (czysta przestrzen).
+// WEJSCIE (M5): pierwsze dotkniecie strefy -> odrzucenie knotem / engulfing M5 / CHoCH -> wejscie po ZAMKNIECIU swiecy.
+// SL: za knotem M5. TP: najblizsza przeciwna strefa H1 (min RR 1:3). BE przy 1:1 robisz recznie.
+// Nie sklada zlecen. Narzedzie edukacyjne, nie porada inwestycyjna.
+
+indicator("MSNR Alchemist", overlay = true, max_lines_count = 400, max_labels_count = 400, max_boxes_count = 100)
+
+// ===== USTAWIENIA =====
+gZ       = "Strefy (wyznaczane na HTF)"
+htfTf    = input.timeframe("60", "Interwal stref (H1)", group = gZ)
+useRbs   = input.bool(true, "Strefy RBS/SBR (wybicie impulsem)", group = gZ)
+useEng   = input.bool(true, "Strefy Engulfing SNR", group = gZ)
+pvN      = input.int(3, "Swing: pivot (swiece z kazdej strony)", minval = 1, group = gZ)
+atrLen   = input.int(14, "ATR (dlugosc)", minval = 2, group = gZ)
+dispBody = input.float(1.5, "Wybicie: min. korpus swiecy impulsu (x ATR)", minval = 0.5, step = 0.1, group = gZ)
+maxTouch = input.int(2, "Maks. dotkniec poziomu przed wybiciem (przepilowanie)", minval = 1, group = gZ)
+zoneW    = input.float(1.5, "Grubosc strefy RBS/SBR (pkt)", minval = 0.1, group = gZ)
+tolZ     = input.float(0.3, "Tolerancja dotkniecia poziomu swingu (pkt)", minval = 0.0, group = gZ)
+engMult  = input.float(1.5, "Engulfing: korpus duzej >= x korpusu malej", minval = 1.0, step = 0.1, group = gZ)
+engATR   = input.float(1.0, "Engulfing: korpus duzej >= x ATR", minval = 0.1, step = 0.1, group = gZ)
+locN     = input.int(10, "Engulfing: ma byc na lokalnym dolku/szczycie (swiece wstecz)", minval = 2, group = gZ)
+dispN    = input.int(3, "Odjazd: ile swiec HTF bez powrotu do strefy Engulfing", minval = 1, group = gZ)
+maxZones = input.int(10, "Maks. liczba stref na wykresie", minval = 2, group = gZ)
+
+gB       = "Kierunek (trend wyzszego interwalu)"
+useBias  = input.bool(true, "Handluj tylko zgodnie z trendem", group = gB)
+biasTf   = input.timeframe("D", "Interwal trendu (D1)", group = gB)
+emaLen   = input.int(50, "EMA trendu (dlugosc)", minval = 2, group = gB)
+
+gE       = "Wejscie na M5"
+touchWin = input.int(12, "Okno potwierdzenia po pierwszym dotknieciu (swiece wykresu)", minval = 1, group = gE)
+useRej   = input.bool(true, "Potwierdzenie: odrzucenie knotem", group = gE)
+wickPct  = input.float(60.0, "Odrzucenie: min. knot (% zakresu swiecy)", minval = 30.0, maxval = 95.0, group = gE)
+useEng5  = input.bool(true, "Potwierdzenie: engulfing M5", group = gE)
+useCho   = input.bool(true, "Potwierdzenie: CHoCH (wybicie ostatniego swingu M5)", group = gE)
+slBuf    = input.float(0.5, "SL: bufor za knotem (pkt ceny)", minval = 0.0, group = gE)
+minRR    = input.float(3.0, "Minimalne RR", minval = 1.0, group = gE)
+useKz    = input.bool(false, "Wchodz tylko w oknie czasowym", group = gE)
+kzSess   = input.session("0830-1130", "Okno egzekucji (czas polski)", group = gE)
+
+gR       = "Ryzyko (do wyliczenia lotow)"
+equity   = input.float(100000.0, "Kapital konta ($)", minval = 100.0, group = gR)
+riskPct  = input.float(0.5, "Ryzyko na transakcje (%)", minval = 0.05, step = 0.05, group = gR)
+contract = input.float(100.0, "Wartosc 1.0 pkt ceny na 1 lot ($) - zloto 100", minval = 0.01, group = gR)
+
+gN       = "Powiadomienia i wyglad"
+alNew    = input.bool(true, "Alert: nowa swieza strefa", group = gN)
+alApr    = input.bool(true, "Alert: cena zbliza sie do strefy", group = gN)
+alDist   = input.float(3.0, "Odleglosc 'zblizania' (pkt)", minval = 0.1, group = gN)
+alTap    = input.bool(true, "Alert: pierwsze dotkniecie strefy (przelacz na M5)", group = gN)
+alDead   = input.bool(true, "Alert: strefa zniszczona / pominiete wejscie", group = gN)
+showTbl  = input.bool(true, "Pokaz tabelke", group = gN)
+
+// ===== DANE Z HTF (zakonczona swieca HTF, bez repaintingu) =====
+f_htf() =>
+    float a  = ta.atr(atrLen)
+    float p1 = ta.pivothigh(high, pvN, pvN)
+    float p2 = ta.pivotlow(low, pvN, pvN)
+    float lo = ta.lowest(low, locN)
+    float hi = ta.highest(high, locN)
+    [open[1], high[1], low[1], close[1], open[2], high[2], low[2], close[2], a[1], p1[1], p2[1], lo[2], hi[2]]
+
+[o1, h1, l1, c1, o2, h2, l2, c2, atr1, pH, pL, loN2, hiN2] = request.security(syminfo.tickerid, htfTf, f_htf(), lookahead = barmerge.lookahead_on)
+newHtf = ta.change(time(htfTf)) != 0
+tfOk   = timeframe.in_seconds() <= timeframe.in_seconds(htfTf)
+
+f_bias() => close > ta.ema(close, emaLen) ? 1 : -1
+bias = request.security(syminfo.tickerid, biasTf, f_bias())
+
+kzOn = not na(time(timeframe.period, kzSess, "Europe/Warsaw"))
+
+// swingi M5 do CHoCH
+pv5 = 2
+ph5 = ta.pivothigh(high, pv5, pv5)
+pl5 = ta.pivotlow(low, pv5, pv5)
+var float lastPH5 = na
+var float lastPL5 = na
+var int   lastPH5Bar = 0
+var int   lastPL5Bar = 0
+if not na(ph5)
+    lastPH5 := ph5
+    lastPH5Bar := bar_index - pv5
+if not na(pl5)
+    lastPL5 := pl5
+    lastPL5Bar := bar_index - pv5
+
+f_ev(string cur, string add) => cur == "" ? add : cur + " | " + add
+
+// ===== MAGAZYN STREF =====
+var array<float> zTop      = array.new_float()
+var array<float> zBot      = array.new_float()
+var array<int>   zDir      = array.new_int()     // 1 = strefa pod BUY, -1 = strefa pod SELL
+var array<int>   zKind     = array.new_int()     // 1 = RBS/SBR, 2 = Engulfing
+var array<int>   zState    = array.new_int()     // 0 = oczekuje na odjazd, 1 = swieza, 2 = dotknieta (okno wejscia)
+var array<int>   zAge      = array.new_int()
+var array<int>   zTouchBar = array.new_int()
+var array<float> zExt      = array.new_float()
+var array<bool>  zAl       = array.new_bool()
+
+// kandydaci na poziomy (swingi) do wybicia
+var array<float> cHi  = array.new_float()
+var array<int>   cHiT = array.new_int()
+var array<float> cLo  = array.new_float()
+var array<int>   cLoT = array.new_int()
+
+f_remZone(int i) =>
+    array.remove(zTop, i)
+    array.remove(zBot, i)
+    array.remove(zDir, i)
+    array.remove(zKind, i)
+    array.remove(zState, i)
+    array.remove(zAge, i)
+    array.remove(zTouchBar, i)
+    array.remove(zExt, i)
+    array.remove(zAl, i)
+
+f_addZone(float top, float bot, int dir, int kind, int state) =>
+    array.push(zTop, top)
+    array.push(zBot, bot)
+    array.push(zDir, dir)
+    array.push(zKind, kind)
+    array.push(zState, state)
+    array.push(zAge, 0)
+    array.push(zTouchBar, 0)
+    array.push(zExt, float(na))
+    array.push(zAl, false)
+    if array.size(zTop) > maxZones
+        f_remZone(0)
+
+f_name(int kind, int dir) => kind == 1 ? (dir == 1 ? "RBS" : "SBR") : (dir == 1 ? "Engulfing BUY" : "Engulfing SELL")
+f_rng(float a, float b) => str.tostring(math.min(a, b), "#.##") + "-" + str.tostring(math.max(a, b), "#.##")
+
+string evFast = ""
+string evSig  = ""
+
+// ===== LOGIKA HTF (raz na swiece HTF) =====
+if newHtf
+    // starzenie i potwierdzenie odjazdu stref Engulfing
+    if array.size(zTop) > 0
+        for i = array.size(zTop) - 1 to 0
+            if array.get(zState, i) == 0
+                array.set(zAge, i, array.get(zAge, i) + 1)
+                if array.get(zAge, i) >= dispN
+                    array.set(zState, i, 1)
+                    if alNew
+                        evFast := f_ev(evFast, "nowa SWIEZA strefa " + f_name(array.get(zKind, i), array.get(zDir, i)) + " " + f_rng(array.get(zTop, i), array.get(zBot, i)))
+
+    // RBS / SBR
+    if useRbs
+        if not na(pH)
+            array.push(cHi, pH)
+            array.push(cHiT, 1)
+            if array.size(cHi) > 20
+                array.shift(cHi)
+                array.shift(cHiT)
+        if not na(pL)
+            array.push(cLo, pL)
+            array.push(cLoT, 1)
+            if array.size(cLo) > 20
+                array.shift(cLo)
+                array.shift(cLoT)
+        bool impBull = c1 > o1 and (c1 - o1) >= dispBody * atr1
+        bool impBear = c1 < o1 and (o1 - c1) >= dispBody * atr1
+        if array.size(cHi) > 0
+            for i = array.size(cHi) - 1 to 0
+                float L = array.get(cHi, i)
+                int tc = array.get(cHiT, i)
+                if c1 > L
+                    if impBull and tc <= maxTouch
+                        f_addZone(L, L - zoneW, 1, 1, 1)
+                        if alNew
+                            evFast := f_ev(evFast, "nowa SWIEZA strefa RBS (BUY) " + f_rng(L, L - zoneW))
+                    array.remove(cHi, i)
+                    array.remove(cHiT, i)
+                else if h1 >= L - tolZ
+                    if tc + 1 > maxTouch
+                        array.remove(cHi, i)
+                        array.remove(cHiT, i)
+                    else
+                        array.set(cHiT, i, tc + 1)
+        if array.size(cLo) > 0
+            for i = array.size(cLo) - 1 to 0
+                float L = array.get(cLo, i)
+                int tc = array.get(cLoT, i)
+                if c1 < L
+                    if impBear and tc <= maxTouch
+                        f_addZone(L + zoneW, L, -1, 1, 1)
+                        if alNew
+                            evFast := f_ev(evFast, "nowa SWIEZA strefa SBR (SELL) " + f_rng(L, L + zoneW))
+                    array.remove(cLo, i)
+                    array.remove(cLoT, i)
+                else if l1 <= L + tolZ
+                    if tc + 1 > maxTouch
+                        array.remove(cLo, i)
+                        array.remove(cLoT, i)
+                    else
+                        array.set(cLoT, i, tc + 1)
+
+    // Engulfing SNR (strefa = korpus malej swiecy)
+    if useEng
+        float body1 = math.abs(c1 - o1)
+        float body2 = math.abs(c2 - o2)
+        bool bigOk  = body1 >= engMult * body2 and body1 >= engATR * atr1
+        bool bullEng = c1 > o1 and c2 < o2 and c1 > h2 and bigOk and l2 <= loN2
+        bool bearEng = c1 < o1 and c2 > o2 and c1 < l2 and bigOk and h2 >= hiN2
+        if bullEng
+            f_addZone(math.max(o2, c2), math.min(o2, c2), 1, 2, 0)
+        if bearEng
+            f_addZone(math.max(o2, c2), math.min(o2, c2), -1, 2, 0)
+
+// ===== LOGIKA NA KAZDEJ SWIECE WYKRESU (dotkniecia i wejscia) =====
+bool   sigBuy  = false
+bool   sigSell = false
+float  sEntry  = na
+float  sSL     = na
+float  sTP     = na
+float  sRR     = na
+float  sLots   = na
+string sSrc    = ""
+
+if array.size(zTop) > 0
+    for i = array.size(zTop) - 1 to 0
+        int   dir = array.get(zDir, i)
+        float zt  = array.get(zTop, i)
+        float zb  = array.get(zBot, i)
+        int   st  = array.get(zState, i)
+        bool  rem = false
+        string nm = f_name(array.get(zKind, i), dir) + " " + f_rng(zt, zb)
+
+        if st == 0
+            bool t0 = dir == 1 ? low <= zt : high >= zb
+            if t0
+                rem := true
+                if alDead
+                    evFast := f_ev(evFast, "strefa " + nm + " odrzucona: cena wrocila przed odjazdem (brak czystej przestrzeni)")
+        else if st == 1
+            bool t1 = dir == 1 ? low <= zt : high >= zb
+            if t1
+                bool thr = dir == 1 ? close < zb : close > zt
+                if thr
+                    rem := true
+                    if alDead
+                        evFast := f_ev(evFast, "strefa " + nm + " ZNISZCZONA (przebita korpusem)")
+                else
+                    array.set(zState, i, 2)
+                    array.set(zTouchBar, i, bar_index)
+                    array.set(zExt, i, dir == 1 ? low : high)
+                    st := 2
+                    if alTap
+                        evFast := f_ev(evFast, "PIERWSZE DOTKNIECIE " + nm + " -> przelacz na M5, szukaj potwierdzenia")
+            else
+                float dist = dir == 1 ? low - zt : zb - high
+                if dist > alDist * 2
+                    array.set(zAl, i, false)
+                else if dist <= alDist and not array.get(zAl, i)
+                    array.set(zAl, i, true)
+                    if alApr and (not useBias or bias == dir)
+                        evFast := f_ev(evFast, "cena blisko swiezej strefy " + nm + " (" + (dir == 1 ? "BUY" : "SELL") + ")")
+
+        if st == 2 and not rem
+            int   n   = bar_index - array.get(zTouchBar, i)
+            float ext = dir == 1 ? math.min(array.get(zExt, i), low) : math.max(array.get(zExt, i), high)
+            array.set(zExt, i, ext)
+            bool thr2 = dir == 1 ? close < zb : close > zt
+            if thr2
+                rem := true
+                if alDead
+                    evFast := f_ev(evFast, "strefa " + nm + " ZNISZCZONA po dotknieciu (zamkniecie poza strefa)")
+            else if n > touchWin
+                rem := true
+            else
+                float rng = high - low
+                bool rej = false
+                bool en5 = false
+                bool chc = false
+                if dir == 1
+                    rej := useRej and rng > 0 and (math.min(open, close) - low) / rng * 100 >= wickPct and low <= zt and close >= zb
+                    en5 := useEng5 and close > open and close[1] < open[1] and close > open[1] and open <= close[1] and low[1] <= zt
+                    chc := useCho and not na(lastPH5) and lastPH5Bar >= array.get(zTouchBar, i) - 5 and close > lastPH5 and close[1] <= lastPH5
+                else
+                    rej := useRej and rng > 0 and (high - math.max(open, close)) / rng * 100 >= wickPct and high >= zb and close <= zt
+                    en5 := useEng5 and close < open and close[1] > open[1] and close < open[1] and open >= close[1] and high[1] >= zb
+                    chc := useCho and not na(lastPL5) and lastPL5Bar >= array.get(zTouchBar, i) - 5 and close < lastPL5 and close[1] >= lastPL5
+                bool confirm = rej or en5 or chc
+                bool okDir = not useBias or bias == dir
+                bool okKz  = not useKz or kzOn
+                if confirm and okDir and okKz and not sigBuy and not sigSell
+                    float entry = close
+                    float slv   = dir == 1 ? ext - slBuf : ext + slBuf
+                    float risk  = math.abs(entry - slv)
+                    if risk > 0
+                        float tpz = na
+                        for j = 0 to array.size(zTop) - 1
+                            if array.get(zDir, j) == -dir and array.get(zState, j) >= 1
+                                float edge = dir == 1 ? array.get(zBot, j) : array.get(zTop, j)
+                                if dir == 1 and edge > entry and (na(tpz) or edge < tpz)
+                                    tpz := edge
+                                if dir == -1 and edge < entry and (na(tpz) or edge > tpz)
+                                    tpz := edge
+                        float tpv = na(tpz) ? (dir == 1 ? entry + minRR * risk : entry - minRR * risk) : tpz
+                        float rrv = math.abs(tpv - entry) / risk
+                        if rrv >= minRR
+                            sigBuy  := dir == 1
+                            sigSell := dir == -1
+                            sEntry  := entry
+                            sSL     := slv
+                            sTP     := tpv
+                            sRR     := rrv
+                            sLots   := equity * riskPct / 100.0 / (risk * contract)
+                            sSrc    := na(tpz) ? "TP = 1:" + str.tostring(minRR, "#.#") + " (brak przeciwnej strefy)" : "TP = przeciwna strefa H1"
+                            rem := true
+                            evSig := f_ev(evSig, "SYGNAL " + (dir == 1 ? "BUY" : "SELL") + " " + nm + " | wejscie " + str.tostring(entry, "#.##") + " SL " + str.tostring(slv, "#.##") + " TP " + str.tostring(tpv, "#.##") + " RR 1:" + str.tostring(rrv, "#.#") + " lot " + str.tostring(sLots, "#.##") + " | " + sSrc)
+                        else
+                            if alDead
+                                evSig := f_ev(evSig, "pominieto wejscie przy " + nm + ": RR 1:" + str.tostring(rrv, "#.#") + " < 1:" + str.tostring(minRR, "#.#"))
+        if rem
+            f_remZone(i)
+
+// ===== SYGNALY NA WYKRESIE =====
+plotshape(sigBuy, title = "BUY", style = shape.triangleup, location = location.belowbar, color = color.green, size = size.normal, text = "BUY")
+plotshape(sigSell, title = "SELL", style = shape.triangledown, location = location.abovebar, color = color.red, size = size.normal, text = "SELL")
+
+if sigBuy or sigSell
+    line.new(bar_index, sSL, bar_index + 30, sSL, color = color.red, style = line.style_dashed)
+    line.new(bar_index, sTP, bar_index + 30, sTP, color = color.green, style = line.style_dashed)
+    line.new(bar_index, sEntry, bar_index + 30, sEntry, color = color.gray)
+    label.new(bar_index + 30, sEntry, "RR 1:" + str.tostring(sRR, "#.#") + " | lot " + str.tostring(sLots, "#.##"), style = label.style_label_left, color = color.new(color.gray, 20), textcolor = color.white, size = size.small)
+
+// ===== ALERTY =====
+if evFast != ""
+    alert(syminfo.ticker + " " + str.tostring(close, "#.##") + ": " + evFast, alert.freq_once_per_bar)
+if evSig != ""
+    alert(syminfo.ticker + " " + str.tostring(close, "#.##") + ": " + evSig, alert.freq_once_per_bar_close)
+
+// ===== RYSOWANIE STREF (tylko na ostatniej swiecy) =====
+var array<box>   bxs = array.new_box()
+var array<label> lbs = array.new_label()
+float nearBuy  = na
+float nearSell = na
+int   freshCnt = 0
+
+if barstate.islast
+    if array.size(bxs) > 0
+        for bx in bxs
+            box.delete(bx)
+        array.clear(bxs)
+    if array.size(lbs) > 0
+        for lb in lbs
+            label.delete(lb)
+        array.clear(lbs)
+    if array.size(zTop) > 0
+        for i = 0 to array.size(zTop) - 1
+            int   dir = array.get(zDir, i)
+            float zt  = array.get(zTop, i)
+            float zb  = array.get(zBot, i)
+            int   st  = array.get(zState, i)
+            color col = st == 0 ? color.gray : (st == 2 ? color.orange : (dir == 1 ? color.green : color.red))
+            array.push(bxs, box.new(bar_index - 80, zt, bar_index + 12, zb, border_color = col, bgcolor = color.new(col, 85), border_width = 1))
+            string tag = f_name(array.get(zKind, i), dir) + (st == 0 ? " (czeka na odjazd)" : (st == 2 ? " (dotknieta)" : " SWIEZA"))
+            array.push(lbs, label.new(bar_index + 13, (zt + zb) / 2, tag, style = label.style_none, textcolor = col, size = size.small))
+            if st >= 1
+                freshCnt += 1
+                if dir == 1 and zt < close and (na(nearBuy) or zt > nearBuy)
+                    nearBuy := zt
+                if dir == -1 and zb > close and (na(nearSell) or zb < nearSell)
+                    nearSell := zb
+
+// ===== TABELKA =====
+var table t = table.new(position.top_right, 2, 6, bgcolor = color.new(color.black, 20), border_width = 1)
+if showTbl and barstate.islast
+    table.cell(t, 0, 0, "MSNR Alchemist", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 0, "Status", text_color = color.white, text_size = size.small)
+    table.cell(t, 0, 1, "Trend (" + biasTf + ")", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 1, bias == 1 ? "w gore -> tylko BUY" : "w dol -> tylko SELL", text_color = bias == 1 ? color.green : color.red, text_size = size.small)
+    table.cell(t, 0, 2, "Swieze strefy", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 2, str.tostring(freshCnt), text_color = color.white, text_size = size.small)
+    table.cell(t, 0, 3, "Najblizsza BUY (pod cena)", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 3, na(nearBuy) ? "brak" : str.tostring(nearBuy, "#.##"), text_color = color.green, text_size = size.small)
+    table.cell(t, 0, 4, "Najblizsza SELL (nad cena)", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 4, na(nearSell) ? "brak" : str.tostring(nearSell, "#.##"), text_color = color.red, text_size = size.small)
+    table.cell(t, 0, 5, useKz ? "Okno egzekucji" : "Interwaly", text_color = tfOk ? color.white : color.orange, text_size = size.small)
+    table.cell(t, 1, 5, not tfOk ? "wykres wiekszy niz interwal stref!" : (useKz ? (kzOn ? "TERAZ (mozna wchodzic)" : "poza oknem") : "wykres M5, strefy " + htfTf), text_color = tfOk ? color.white : color.orange, text_size = size.small)
